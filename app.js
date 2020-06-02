@@ -8,6 +8,9 @@ const pokeTypeOne = document.querySelector('.poke-type-one');
 const pokeTypeTwo = document.querySelector('.poke-type-two');
 const pokeHeight = document.querySelector('.poke-weight');
 const pokeWeight = document.querySelector('.poke-height');
+const pokeListItems = document.querySelectorAll('.list-item');
+const leftButton = document.querySelector('.left-button');
+const rightButton = document.querySelector('.right-button');
 
 // constants and variables
 const TYPES = [
@@ -19,6 +22,9 @@ const TYPES = [
     'dragon', 'dark', 'fairy'
 ];
 
+let prevUrl = 'null';
+let nextUrl = 'null';
+
 // functions
 const capitalize = (str) => str[0].toUpperCase() + str.substr(1);
 
@@ -29,29 +35,89 @@ const resetScreen = () => {
     }
 };
 
-fetch('https://pokeapi.co/api/v2/pokemon/1')
-    .then(res => res.json())
-    .then(data => {
-        resetScreen();
 
-        const dataTypes = data['types'];
-        const dataFirstType = dataTypes[0];
-        const dataSecondType = dataTypes[1];
-        pokeTypeOne.textContent = capitalize(dataFirstType['type']['name']);
+const fetchPokeList = url => {
+    fetch(url)
+        .then(res => res.json())
+        .then(data => {
+            const { results, previous, next } = data;
+            prevUrl = previous;
+            nextUrl = next;
 
-        if (dataSecondType) {
-            pokeTypeTwo.classList.remove('hide');
-            pokeTypeTwo.textContent = capitalize(dataSecondType['type']['name']);
-        } else {
-            pokeTypeTwo.classList.add('hide');
-            pokeTypeTwo.textContent = '';
-        }
-        mainScreen.classList.add(dataFirstType['type']['name']);
+            for (let i = 0; i < pokeListItems.length; i++) {
+                const pokeListItem = pokeListItems[i];
+                const resultData = results[i];
 
-        pokeName.textContent = capitalize(data['name']);
-        pokeId.textContent = '#' + data['id'].toString().padStart(3, '0');
-        pokeWeight.textContent = data['weight'];
-        pokeHeight.textContent = data['height'];
-        pokeFrontImage.src = data['sprites']['front_default'] || '';
-        pokeBackImage.src = data['sprites']['back_default'] || '';
-    });
+                if (resultData) {
+                    const { name, url } = resultData;
+                    const urlArray = url.split('/');
+                    const id = urlArray[urlArray.length - 2]
+                    pokeListItem.textContent = id + '. ' + capitalize(name);
+                } else {
+                    pokeListItem.textContent = '';
+                }
+            }
+        });
+};
+
+const fetchPokeData = id => {
+    fetch(`https://pokeapi.co/api/v2/pokemon/${id}`)
+        .then(res => res.json())
+        .then(data => {
+            resetScreen();
+
+            const dataTypes = data['types'];
+            const dataFirstType = dataTypes[0];
+            const dataSecondType = dataTypes[1];
+            pokeTypeOne.textContent = capitalize(dataFirstType['type']['name']);
+
+            if (dataSecondType) {
+                pokeTypeTwo.classList.remove('hide');
+                pokeTypeTwo.textContent = capitalize(dataSecondType['type']['name']);
+            } else {
+                pokeTypeTwo.classList.add('hide');
+                pokeTypeTwo.textContent = '';
+            }
+            mainScreen.classList.add(dataFirstType['type']['name']);
+
+            pokeName.textContent = capitalize(data['name']);
+            pokeId.textContent = '#' + data['id'].toString().padStart(3, '0');
+            pokeWeight.textContent = data['weight'];
+            pokeHeight.textContent = data['height'];
+            pokeFrontImage.src = data['sprites']['front_default'] || '';
+            pokeBackImage.src = data['sprites']['back_default'] || '';
+        });
+
+}
+
+const handleRightButtonClick = () => {
+    if (nextUrl) {
+        fetchPokeList(nextUrl);
+    }
+};
+
+const handleLeftButtonClick = () => {
+    if (prevUrl) {
+        fetchPokeList(prevUrl);
+    }
+};
+
+const handleListItemClick = (e) => {
+    if (!e.target) return;
+
+    const listItem = e.target;
+    if (!listItem.textContent) return;
+
+    const id = listItem.textContent.split('.')[0];
+    fetchPokeData(id);
+};
+
+leftButton.addEventListener('click', handleLeftButtonClick);
+rightButton.addEventListener('click', handleRightButtonClick);
+
+for (const pokeListItem of pokeListItems) {
+    pokeListItem.addEventListener('click', handleListItemClick)
+}
+
+//initialize app
+fetchPokeList('https://pokeapi.co/api/v2/pokemon?offset=0&limit=20');
